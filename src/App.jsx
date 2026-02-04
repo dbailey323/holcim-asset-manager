@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 // --- CONFIG ---
-const API_URL = "https://script.google.com/a/macros/holcim.co.uk/s/AKfycbwQEwQ_m6_DrinJs6n1TxWfY-7Yr5QZYye_VIEcgNSrOtWr8V7tuW60xyg8XQH7-HKz/exec"; // PASTE URL HERE
+const API_URL = "https://script.google.com/macros/s/AKfycbw3RS-BUP-A0ohs9Zv_ebF8Vw3x0p8qiqmf7E5MM6kCBThKGjERaOeb3cDKgot7vgVX/exec"; // PASTE URL HERE
 
 // --- HOLCIM STYLES ---
 const styles = {
