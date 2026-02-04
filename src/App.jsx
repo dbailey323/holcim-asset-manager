@@ -8,7 +8,15 @@ const API_URL = "https://script.google.com/macros/s/AKfycbw3RS-BUP-A0ohs9Zv_ebF8
 // --- HOLCIM THEME STYLES ---
 const theme = {
   header: { backgroundColor: '#fff', borderBottom: '3px solid #04C688' },
-  bg: { backgroundColor: '#F4F6F8', minHeight: '100vh', paddingBottom: '60px' },
+  // UPDATED: Added Flexbox properties to force centering
+  bg: { 
+    backgroundColor: '#F4F6F8', 
+    minHeight: '100vh', 
+    paddingBottom: '60px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center' // This forces the children (the container) to the center
+  },
   
   // Status Card Styles
   inUse: { borderLeft: '5px solid #04C688' }, 
@@ -71,7 +79,6 @@ export default function App() {
         
         setSearch("");
         document.getElementById("searchInput")?.focus();
-
       } else {
         alert("Error: " + result.message);
       }
@@ -90,8 +97,10 @@ export default function App() {
   const displayList = search === "" ? filtered.slice(0, 12) : filtered.slice(0, 60);
 
   return (
-    <div style={theme.bg}>
-      {/* Sticky Header */}
+    // Outer Wrapper
+    <div style={{ backgroundColor: '#F4F6F8', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* 1. Navbar (Full Width) */}
       <nav className="navbar navbar-light sticky-top shadow-sm mb-4" style={theme.header}>
         <div className="container justify-content-center">
           <span className="navbar-brand h1 mb-0">
@@ -104,58 +113,57 @@ export default function App() {
         </div>
       </nav>
 
-      {/* --- MAIN CONTAINER FIX --- */}
-      {/* 'mx-auto' forces horizontal margins to auto (centering the block) */}
-      <div 
-        className="container mx-auto" 
-        style={{ maxWidth: '1000px', marginLeft: 'auto', marginRight: 'auto' }}
-      >
+      {/* 2. Main Content Wrapper (Centered Flex Item) */}
+      <div className="d-flex flex-column align-items-center w-100 flex-grow-1">
         
-        {/* Search Bar */}
-        <div className="row justify-content-center mb-4">
-          <div className="col-12 col-md-8">
-            <input 
-              id="searchInput"
-              type="text" 
-              className="form-control form-control-lg rounded-pill shadow-sm"
-              placeholder="Scan Tag, Serial, or User..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              autoFocus
-              style={{border: '1px solid #e0e0e0'}}
-            />
-          </div>
-        </div>
-
-        {/* Loading Spinner */}
-        {loading && (
-          <div className="text-center mt-5 text-secondary">
-            <div className="spinner-border text-success mb-2"></div>
-            <p>Syncing Asset Data...</p>
-          </div>
-        )}
-
-        {/* Asset Grid */}
-        {/* 'justify-content-center' ensures cards start in the middle if there are only a few */}
-        <div className="row g-4 justify-content-center">
-          {displayList.map(asset => (
-            <div key={asset.id} className="col-12 col-md-6 col-lg-4">
-              <AssetCard 
-                asset={asset} 
-                theme={theme} 
-                onAction={handleAction} 
-                isProcessing={processingId === asset.id} 
+        {/* 3. The Actual Container (Restricted Width) */}
+        <div className="container" style={{ width: '100%', maxWidth: '1000px', paddingBottom: '60px' }}>
+          
+          {/* Search Bar */}
+          <div className="row justify-content-center mb-4">
+            <div className="col-12 col-md-8">
+              <input 
+                id="searchInput"
+                type="text" 
+                className="form-control form-control-lg rounded-pill shadow-sm"
+                placeholder="Scan Tag, Serial, or User..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+                style={{border: '1px solid #e0e0e0'}}
               />
             </div>
-          ))}
-        </div>
-        
-        {!loading && filtered.length === 0 && (
-          <div className="text-center mt-5 text-muted">
-             <h5>No assets found</h5>
-             <p>Try a different serial number or user.</p>
           </div>
-        )}
+
+          {/* Loading Spinner */}
+          {loading && (
+            <div className="text-center mt-5 text-secondary">
+              <div className="spinner-border text-success mb-2"></div>
+              <p>Syncing Asset Data...</p>
+            </div>
+          )}
+
+          {/* Asset Grid - Centered Row */}
+          <div className="row g-4 justify-content-center">
+            {displayList.map(asset => (
+              <div key={asset.id} className="col-12 col-md-6 col-lg-4">
+                <AssetCard 
+                  asset={asset} 
+                  theme={theme} 
+                  onAction={handleAction} 
+                  isProcessing={processingId === asset.id} 
+                />
+              </div>
+            ))}
+          </div>
+          
+          {!loading && filtered.length === 0 && (
+            <div className="text-center mt-5 text-muted">
+               <h5>No assets found</h5>
+               <p>Try a different serial number or user.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
