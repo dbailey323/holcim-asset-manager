@@ -3,7 +3,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 // --- CONFIGURATION ---
 // IMPORTANT: Replace this with the URL you got from Google Apps Script (Deploy > Web App)
-const API_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"; 
+const API_URL = "https://script.google.com/macros/s/AKfycbw3RS-BUP-A0ohs9Zv_ebF8Vw3x0p8qiqmf7E5MM6kCBThKGjERaOeb3cDKgot7vgVX/exec"; 
 
 // --- HOLCIM THEME STYLES ---
 const theme = {
