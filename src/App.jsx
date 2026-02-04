@@ -85,20 +85,22 @@ export default function App() {
   const displayList = search === "" ? filteredAssets.slice(0, 12) : filteredAssets.slice(0, 60);
 
   return (
-    <div style={styles.bg}>
-      {/* Header */}
-      <nav className="navbar navbar-light sticky-top mb-4" style={styles.header}>
+    <div style={theme.bg}>
+      {/* Sticky Header */}
+      <nav className="navbar navbar-light sticky-top shadow-sm mb-4" style={theme.header}>
         <div className="container justify-content-center">
           <span className="navbar-brand h1 mb-0">
-             <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/LogoHolcim2021.svg/250px-LogoHolcim2021.svg.png" height="45" alt="Holcim" />
+             <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/LogoHolcim2021.svg/250px-LogoHolcim2021.svg.png" height="40" alt="Holcim" />
           </span>
         </div>
       </nav>
 
-      <div className="container">
-        {/* Search */}
+      {/* Main Container - UPDATED with maxWidth to center it nicely */}
+      <div className="container" style={{ maxWidth: '1000px' }}>
+        
+        {/* Search Bar */}
         <div className="row justify-content-center mb-4">
-          <div className="col-md-8">
+          <div className="col-12 col-md-8">
             <input 
               id="searchInput"
               type="text" 
@@ -107,26 +109,38 @@ export default function App() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               autoFocus
+              style={{border: '1px solid #e0e0e0'}}
             />
           </div>
         </div>
 
-        {/* Loading */}
-        {loading && <div className="text-center mt-5"><div className="spinner-border text-secondary"></div></div>}
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center mt-5 text-secondary">
+            <div className="spinner-border text-success mb-2"></div>
+            <p>Syncing Asset Data...</p>
+          </div>
+        )}
 
-        {/* Grid */}
-        <div className="row g-4">
+        {/* Asset Grid - UPDATED with 'justify-content-center' */}
+        <div className="row g-4 justify-content-center">
           {displayList.map(asset => (
             <div key={asset.id} className="col-12 col-md-6 col-lg-4">
               <AssetCard 
                 asset={asset} 
-                styles={styles} 
-                onAction={handleUpdate} 
-                isProcessing={processing === asset.id} 
+                theme={theme} 
+                onAction={handleAction} 
+                isProcessing={processingId === asset.id} 
               />
             </div>
           ))}
         </div>
+        
+        {!loading && filtered.length === 0 && (
+          <div className="text-center mt-5 text-muted">
+             <h5>No assets found</h5>
+          </div>
+        )}
       </div>
     </div>
   );
