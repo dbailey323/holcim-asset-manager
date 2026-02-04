@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 // --- CONFIGURATION ---
-// IMPORTANT: Replace this with the URL you got from Google Apps Script (Deploy > Web App)
+// IMPORTANT: Paste your Web App URL here
 const API_URL = "https://script.google.com/macros/s/AKfycbw3RS-BUP-A0ohs9Zv_ebF8Vw3x0p8qiqmf7E5MM6kCBThKGjERaOeb3cDKgot7vgVX/exec"; 
 
 // --- HOLCIM THEME STYLES ---
@@ -11,9 +11,9 @@ const theme = {
   bg: { backgroundColor: '#F4F6F8', minHeight: '100vh', paddingBottom: '60px' },
   
   // Status Card Styles
-  inUse: { borderLeft: '5px solid #04C688' }, // Green
-  stock: { borderLeft: '5px solid #FFC107' }, // Yellow
-  faulty: { borderLeft: '5px solid #DC3545' }, // Red
+  inUse: { borderLeft: '5px solid #04C688' }, 
+  stock: { borderLeft: '5px solid #FFC107' }, 
+  faulty: { borderLeft: '5px solid #DC3545' }, 
   
   // Buttons
   btnCheckout: { backgroundColor: '#04C688', color: 'white', border: 'none' },
@@ -26,7 +26,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
 
-  // 1. Fetch Data on Load
   useEffect(() => {
     fetch(API_URL)
       .then(res => res.json())
@@ -40,22 +39,17 @@ export default function App() {
       });
   }, []);
 
-  // 2. Handle Check In / Check Out Actions
   const handleAction = async (id, action) => {
     let newUser = "";
-    
-    // Logic: If Checking OUT, we must ask who it is for.
     if (action === 'checkout') {
       newUser = prompt("Who is receiving this device?");
-      if (newUser === null) return; // User pressed Cancel
-      if (newUser.trim() === "") return alert("A user name is required to check out.");
+      if (newUser === null) return; 
+      if (newUser.trim() === "") return alert("A user name is required.");
     }
 
-    setProcessingId(id); // Show spinner on the specific card
+    setProcessingId(id);
 
     try {
-      // POST request to Google Apps Script
-      // Note: We use no-cors if standard CORS fails, but standard usually works with 'text/plain' body
       const response = await fetch(API_URL, {
         method: "POST",
         body: JSON.stringify({ id, action, user: newUser })
@@ -64,23 +58,18 @@ export default function App() {
       const result = await response.json();
 
       if (result.success) {
-        // Optimistic Update: Update the local list instantly without re-fetching
         setAssets(prev => prev.map(a => {
           if (String(a.id) === String(id)) {
             return { 
               ...a, 
               status: result.newStatus, 
-              // If checking out, use new name. If checking in, API returns "" (empty string).
               user: result.newUser !== undefined ? result.newUser : a.user 
             };
           }
           return a;
         }));
         
-        // --- SCANNER MODE ---
-        // 1. Clear the search box
         setSearch("");
-        // 2. Refocus the cursor so you can scan the next item immediately
         document.getElementById("searchInput")?.focus();
 
       } else {
@@ -88,18 +77,16 @@ export default function App() {
       }
     } catch (error) {
       console.error(error);
-      alert("Network Error. Please check your internet connection.");
+      alert("Network Error.");
     }
     setProcessingId(null);
   };
 
-  // 3. Filter Logic (Search by Serial, User, or Asset Tag)
   const filtered = assets.filter(a => 
     search === "" ? true : 
     [a.serial, a.user, a.assetTag].some(val => String(val || "").toLowerCase().includes(search.toLowerCase()))
   );
 
-  // Performance: Show 12 items initially, or 60 if searching
   const displayList = search === "" ? filtered.slice(0, 12) : filtered.slice(0, 60);
 
   return (
@@ -117,8 +104,12 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Main Content Container - Centered with Max Width */}
-      <div className="container" style={{ maxWidth: '1000px' }}>
+      {/* --- MAIN CONTAINER FIX --- */}
+      {/* 'mx-auto' forces horizontal margins to auto (centering the block) */}
+      <div 
+        className="container mx-auto" 
+        style={{ maxWidth: '1000px', marginLeft: 'auto', marginRight: 'auto' }}
+      >
         
         {/* Search Bar */}
         <div className="row justify-content-center mb-4">
@@ -145,6 +136,7 @@ export default function App() {
         )}
 
         {/* Asset Grid */}
+        {/* 'justify-content-center' ensures cards start in the middle if there are only a few */}
         <div className="row g-4 justify-content-center">
           {displayList.map(asset => (
             <div key={asset.id} className="col-12 col-md-6 col-lg-4">
@@ -158,7 +150,6 @@ export default function App() {
           ))}
         </div>
         
-        {/* No Results State */}
         {!loading && filtered.length === 0 && (
           <div className="text-center mt-5 text-muted">
              <h5>No assets found</h5>
@@ -170,11 +161,10 @@ export default function App() {
   );
 }
 
-// --- SUB-COMPONENT: ASSET CARD ---
+// --- ASSET CARD COMPONENT ---
 function AssetCard({ asset, theme, onAction, isProcessing }) {
-  // Determine Card Style based on Status
-  let cardStyle = { ...theme.stock }; // Default to Stock style (Yellow)
-  let badgeClass = "badge bg-warning text-dark"; // Default Badge
+  let cardStyle = { ...theme.stock }; 
+  let badgeClass = "badge bg-warning text-dark"; 
 
   if (asset.status === 'In Use') { 
     cardStyle = theme.inUse; 
@@ -188,7 +178,6 @@ function AssetCard({ asset, theme, onAction, isProcessing }) {
     <div className="card h-100 shadow-sm border-0" style={{...cardStyle, borderRadius: '12px'}}>
       <div className="card-body d-flex flex-column justify-content-between">
         <div>
-          {/* Card Header: Serial & Status */}
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fw-bold m-0">{asset.serial}</h5>
             <span className={badgeClass} style={{fontSize: '0.8em', padding:'6px 10px'}}>
@@ -196,20 +185,16 @@ function AssetCard({ asset, theme, onAction, isProcessing }) {
             </span>
           </div>
           
-          {/* Card Data Grid */}
           <div className="row g-2 mb-3">
             <DataPoint label="User" value={asset.user} />
             <DataPoint label="Asset Tag" value={asset.assetTag} />
             <DataPoint label="Lease End" value={asset.leaseEnd} />
-            
-            {/* Description spans full width */}
             <div className="col-12 text-muted small mt-2">
               {asset.description}
             </div>
           </div>
         </div>
 
-        {/* Buttons */}
         {asset.status === 'In Use' && (
           <button 
             className="btn w-100 py-2 fw-bold shadow-sm" 
@@ -232,7 +217,6 @@ function AssetCard({ asset, theme, onAction, isProcessing }) {
           </button>
         )}
         
-        {/* If Faulty or other status, disable button */}
         {!['In Use', 'Stock Room'].includes(asset.status) && (
            <button className="btn btn-light w-100 py-2 text-muted" disabled>
              Action Unavailable
@@ -243,8 +227,6 @@ function AssetCard({ asset, theme, onAction, isProcessing }) {
   );
 }
 
-// --- HELPER: DATA POINT ---
-// Ensures labels and values look consistent
 const DataPoint = ({ label, value }) => (
   <div className="col-6">
     <small className="text-uppercase text-muted fw-bold" style={{fontSize: '0.7rem'}}>
