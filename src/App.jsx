@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// --- CONFIG ---
-const API_URL = "https://script.google.com/macros/s/AKfycbw3RS-BUP-A0ohs9Zv_ebF8Vw3x0p8qiqmf7E5MM6kCBThKGjERaOeb3cDKgot7vgVX/exec"; // PASTE URL HERE
+// --- CONFIGURATION ---
+// IMPORTANT: Replace this with the URL you got from Google Apps Script (Deploy > Web App)
+const API_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"; 
 
-// --- HOLCIM STYLES ---
-const styles = {
+// --- HOLCIM THEME STYLES ---
+const theme = {
   header: { backgroundColor: '#fff', borderBottom: '3px solid #04C688' },
-  bg: { backgroundColor: '#F4F6F8', minHeight: '100vh', paddingBottom: '40px' },
-  cardInUse: { borderLeft: '5px solid #04C688' },
-  cardStock: { borderLeft: '5px solid #FFC107' },
-  cardFaulty: { borderLeft: '5px solid #DC3545' },
-  badgeInUse: { backgroundColor: 'rgba(4, 198, 136, 0.15)', color: '#038c60' },
-  badgeStock: { backgroundColor: 'rgba(255, 193, 7, 0.15)', color: '#997404' },
+  bg: { backgroundColor: '#F4F6F8', minHeight: '100vh', paddingBottom: '60px' },
+  
+  // Status Card Styles
+  inUse: { borderLeft: '5px solid #04C688' }, // Green
+  stock: { borderLeft: '5px solid #FFC107' }, // Yellow
+  faulty: { borderLeft: '5px solid #DC3545' }, // Red
+  
+  // Buttons
   btnCheckout: { backgroundColor: '#04C688', color: 'white', border: 'none' },
   btnCheckin: { backgroundColor: '#1F2833', color: 'white', border: 'none' }
 };
@@ -21,7 +24,7 @@ export default function App() {
   const [assets, setAssets] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(null);
+  const [processingId, setProcessingId] = useState(null);
 
   // 1. Fetch Data on Load
   useEffect(() => {
@@ -31,23 +34,28 @@ export default function App() {
         setAssets(data);
         setLoading(false);
       })
-      .catch(err => console.error("Error fetching data:", err));
+      .catch(err => {
+        console.error("API Error:", err);
+        setLoading(false);
+      });
   }, []);
 
-  // 2. Handle Actions
-  const handleUpdate = async (id, action) => {
+  // 2. Handle Check In / Check Out Actions
+  const handleAction = async (id, action) => {
     let newUser = "";
+    
+    // Logic: If Checking OUT, we must ask who it is for.
     if (action === 'checkout') {
       newUser = prompt("Who is receiving this device?");
-      if (!newUser) return;
+      if (newUser === null) return; // User pressed Cancel
+      if (newUser.trim() === "") return alert("A user name is required to check out.");
     }
 
-    setProcessing(id); // Show spinner on specific card
+    setProcessingId(id); // Show spinner on the specific card
 
-    // Send POST request to Google Script
-    // Note: We use stringify and no-cors mode might be needed if simple CORS fails, 
-    // but usually standard fetch works with "text/plain" body to avoid preflight issues in GAS.
     try {
+      // POST request to Google Apps Script
+      // Note: We use no-cors if standard CORS fails, but standard usually works with 'text/plain' body
       const response = await fetch(API_URL, {
         method: "POST",
         body: JSON.stringify({ id, action, user: newUser })
@@ -56,33 +64,43 @@ export default function App() {
       const result = await response.json();
 
       if (result.success) {
-        // Update Local State
+        // Optimistic Update: Update the local list instantly without re-fetching
         setAssets(prev => prev.map(a => {
           if (String(a.id) === String(id)) {
-            return { ...a, status: result.newStatus, user: result.newUser || a.user };
+            return { 
+              ...a, 
+              status: result.newStatus, 
+              // If checking out, use new name. If checking in, API returns "" (empty string).
+              user: result.newUser !== undefined ? result.newUser : a.user 
+            };
           }
           return a;
         }));
-        setSearch(""); // Clear search for next scan
         
-        // Focus search bar (Scanner Mode)
+        // --- SCANNER MODE ---
+        // 1. Clear the search box
+        setSearch("");
+        // 2. Refocus the cursor so you can scan the next item immediately
         document.getElementById("searchInput")?.focus();
+
       } else {
         alert("Error: " + result.message);
       }
     } catch (error) {
-      alert("Network Error");
+      console.error(error);
+      alert("Network Error. Please check your internet connection.");
     }
-    setProcessing(null);
+    setProcessingId(null);
   };
 
-  // 3. Filter Logic
-  const filteredAssets = assets.filter(a => 
+  // 3. Filter Logic (Search by Serial, User, or Asset Tag)
+  const filtered = assets.filter(a => 
     search === "" ? true : 
-    [a.serial, a.user, a.assetTag].some(f => String(f).toLowerCase().includes(search.toLowerCase()))
+    [a.serial, a.user, a.assetTag].some(val => String(val || "").toLowerCase().includes(search.toLowerCase()))
   );
 
-  const displayList = search === "" ? filteredAssets.slice(0, 12) : filteredAssets.slice(0, 60);
+  // Performance: Show 12 items initially, or 60 if searching
+  const displayList = search === "" ? filtered.slice(0, 12) : filtered.slice(0, 60);
 
   return (
     <div style={theme.bg}>
@@ -90,12 +108,16 @@ export default function App() {
       <nav className="navbar navbar-light sticky-top shadow-sm mb-4" style={theme.header}>
         <div className="container justify-content-center">
           <span className="navbar-brand h1 mb-0">
-             <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/LogoHolcim2021.svg/250px-LogoHolcim2021.svg.png" height="40" alt="Holcim" />
+             <img 
+               src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/LogoHolcim2021.svg/250px-LogoHolcim2021.svg.png" 
+               height="40" 
+               alt="Holcim" 
+             />
           </span>
         </div>
       </nav>
 
-      {/* Main Container - UPDATED with maxWidth to center it nicely */}
+      {/* Main Content Container - Centered with Max Width */}
       <div className="container" style={{ maxWidth: '1000px' }}>
         
         {/* Search Bar */}
@@ -114,7 +136,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Loading State */}
+        {/* Loading Spinner */}
         {loading && (
           <div className="text-center mt-5 text-secondary">
             <div className="spinner-border text-success mb-2"></div>
@@ -122,7 +144,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Asset Grid - UPDATED with 'justify-content-center' */}
+        {/* Asset Grid */}
         <div className="row g-4 justify-content-center">
           {displayList.map(asset => (
             <div key={asset.id} className="col-12 col-md-6 col-lg-4">
@@ -136,9 +158,11 @@ export default function App() {
           ))}
         </div>
         
+        {/* No Results State */}
         {!loading && filtered.length === 0 && (
           <div className="text-center mt-5 text-muted">
              <h5>No assets found</h5>
+             <p>Try a different serial number or user.</p>
           </div>
         )}
       </div>
@@ -146,47 +170,50 @@ export default function App() {
   );
 }
 
-// Sub-Component for Cards
-function AssetCard({ asset, styles, onAction, isProcessing }) {
-  let borderStyle = {};
-  let badgeStyle = "badge bg-secondary";
-  
-  if (asset.status === 'In Use') { borderStyle = styles.cardInUse; badgeStyle = styles.badgeInUse; }
-  else if (asset.status === 'Stock Room') { borderStyle = styles.cardStock; badgeStyle = styles.badgeStock; }
-  else if (asset.status.includes('Faulty')) { borderStyle = styles.cardFaulty; badgeStyle = "badge bg-danger"; }
+// --- SUB-COMPONENT: ASSET CARD ---
+function AssetCard({ asset, theme, onAction, isProcessing }) {
+  // Determine Card Style based on Status
+  let cardStyle = { ...theme.stock }; // Default to Stock style (Yellow)
+  let badgeClass = "badge bg-warning text-dark"; // Default Badge
+
+  if (asset.status === 'In Use') { 
+    cardStyle = theme.inUse; 
+    badgeClass = "badge bg-success bg-opacity-10 text-success";
+  } else if (asset.status && asset.status.includes('Faulty')) { 
+    cardStyle = theme.faulty; 
+    badgeClass = "badge bg-danger bg-opacity-10 text-danger";
+  }
 
   return (
-    <div className="card h-100 shadow-sm border-0" style={borderStyle}>
+    <div className="card h-100 shadow-sm border-0" style={{...cardStyle, borderRadius: '12px'}}>
       <div className="card-body d-flex flex-column justify-content-between">
         <div>
+          {/* Card Header: Serial & Status */}
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fw-bold m-0">{asset.serial}</h5>
-            <span className="badge rounded-pill" style={typeof badgeStyle === 'string' ? {} : badgeStyle}>
-               {typeof badgeStyle === 'string' ? <span className={badgeStyle}>{asset.status}</span> : asset.status}
+            <span className={badgeClass} style={{fontSize: '0.8em', padding:'6px 10px'}}>
+              {asset.status}
             </span>
           </div>
           
+          {/* Card Data Grid */}
           <div className="row g-2 mb-3">
-            <div className="col-6">
-              <small className="text-uppercase text-muted fw-bold" style={{fontSize: '0.75rem'}}>User</small>
-              <div className="text-truncate">{asset.user || '—'}</div>
+            <DataPoint label="User" value={asset.user} />
+            <DataPoint label="Asset Tag" value={asset.assetTag} />
+            <DataPoint label="Lease End" value={asset.leaseEnd} />
+            
+            {/* Description spans full width */}
+            <div className="col-12 text-muted small mt-2">
+              {asset.description}
             </div>
-            <div className="col-6">
-              <small className="text-uppercase text-muted fw-bold" style={{fontSize: '0.75rem'}}>Asset Tag</small>
-              <div>{asset.assetTag || '—'}</div>
-            </div>
-             <div className="col-6">
-              <small className="text-uppercase text-muted fw-bold" style={{fontSize: '0.75rem'}}>Lease End</small>
-              <div>{asset.leaseEnd || '—'}</div>
-            </div>
-            <div className="col-12 text-muted small mt-2">{asset.description}</div>
           </div>
         </div>
 
+        {/* Buttons */}
         {asset.status === 'In Use' && (
           <button 
-            className="btn w-100 py-2 fw-bold" 
-            style={styles.btnCheckin} 
+            className="btn w-100 py-2 fw-bold shadow-sm" 
+            style={theme.btnCheckin} 
             disabled={isProcessing}
             onClick={() => onAction(asset.id, 'checkin')}
           >
@@ -196,15 +223,35 @@ function AssetCard({ asset, styles, onAction, isProcessing }) {
 
         {asset.status === 'Stock Room' && (
           <button 
-            className="btn w-100 py-2 fw-bold" 
-            style={styles.btnCheckout} 
+            className="btn w-100 py-2 fw-bold shadow-sm" 
+            style={theme.btnCheckout} 
             disabled={isProcessing}
             onClick={() => onAction(asset.id, 'checkout')}
           >
             {isProcessing ? 'Updating...' : '📤 CHECK OUT'}
           </button>
         )}
+        
+        {/* If Faulty or other status, disable button */}
+        {!['In Use', 'Stock Room'].includes(asset.status) && (
+           <button className="btn btn-light w-100 py-2 text-muted" disabled>
+             Action Unavailable
+           </button>
+        )}
       </div>
     </div>
   );
 }
+
+// --- HELPER: DATA POINT ---
+// Ensures labels and values look consistent
+const DataPoint = ({ label, value }) => (
+  <div className="col-6">
+    <small className="text-uppercase text-muted fw-bold" style={{fontSize: '0.7rem'}}>
+      {label}
+    </small>
+    <div className="text-truncate fw-medium" title={value}>
+      {value || '—'}
+    </div>
+  </div>
+);
